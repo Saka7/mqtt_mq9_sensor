@@ -20,8 +20,6 @@
 #include "protocol_wifi_common.h"
 
 static const char *TAG = "MQTT";
-static const int MQ9_REFRESH_INTERVAL_MS=1000;
-static const char* MQ9_MQTT_TOPIC="mq9";
 static uint16_t adc_data[100];
 static TaskHandle_t mq9_sensor_task_handle = NULL;
 
@@ -36,10 +34,10 @@ static void mq9_sensor_task(void * args) {
 		utoa(adc_data[0], msg, 10);
 
 		uint8_t msg_id = 0;
-		msg_id = esp_mqtt_client_publish(client, MQ9_MQTT_TOPIC, msg, 0, 1, 0);
+		msg_id = esp_mqtt_client_publish(client, CONFIG_MQ9_MQTT_TOPIC, msg, 0, 1, 0);
 		ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
-		vTaskDelay(MQ9_REFRESH_INTERVAL_MS / portTICK_RATE_MS);
+		vTaskDelay(CONFIG_MQ9_REFRESH_INTERVAL_MS / portTICK_RATE_MS);
 	}
 }
 

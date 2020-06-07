@@ -12,7 +12,16 @@ MQTT topic: 'mq9'
 
 ## Setup
 
+### Setup SDK
 Follow the `ESP8266_RTOS_SDK` setup guide [link](https://github.com/espressif/ESP8266_RTOS_SDK)
+
+### Setup config
+
+Copy config file and change values
+```sh
+cp main/Kconfig.projbuild.example main/Kconfig.projbuild
+```
+
 
 ## Commands
 

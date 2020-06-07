@@ -6,6 +6,14 @@ config BROKER_URL
     help
         URL of the broker to connect to
 
+config MQ9_MQTT_TOPIC
+    string "MQTT TOPIC"
+    default "mq9"
+
+config MQ9_REFRESH_INTERVAL_MS
+    int "MQ9 REFRESH INTERVAL MS"
+    default 5000
+
 config WIFI_SSID
 	string "WiFi SSID"
 	default "<WIFI SSID>"
