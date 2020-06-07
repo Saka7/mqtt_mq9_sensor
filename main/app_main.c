@@ -21,9 +21,13 @@
 
 static const char *TAG = "MQTT";
 static const int MQ9_REFRESH_INTERVAL_MS=1000;
+static const char* MQ9_MQTT_TOPIC="mq9";
 static uint16_t adc_data[100];
+static TaskHandle_t mq9_sensor_task_handle = NULL;
 
-static void mq9_sensor_task(esp_mqtt_client_handle_t client) {
+static void mq9_sensor_task(void * args) {
+	esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t*) args;
+
 	while (1) {
 		adc_read(&adc_data[0]);
 		ESP_LOGI(TAG, "adc read: %d\r\n", adc_data[0]);
@@ -32,7 +36,7 @@ static void mq9_sensor_task(esp_mqtt_client_handle_t client) {
 		utoa(adc_data[0], msg, 10);
 
 		uint8_t msg_id = 0;
-		msg_id = esp_mqtt_client_publish(client, "mq9", msg, 0, 1, 0);
+		msg_id = esp_mqtt_client_publish(client, MQ9_MQTT_TOPIC, msg, 0, 1, 0);
 		ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
 
 		vTaskDelay(MQ9_REFRESH_INTERVAL_MS / portTICK_RATE_MS);
@@ -44,10 +48,13 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event) {
 	switch (event->event_id) {
 		case MQTT_EVENT_CONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-			xTaskCreate(mq9_sensor_task, "mq9_sensor_task", 1024, client, 5, NULL);
+			xTaskCreate(mq9_sensor_task, "mq9_sensor_task", 1024, (void *) client, 5, &mq9_sensor_task_handle);
 			break;
 		case MQTT_EVENT_DISCONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
+
+			if (mq9_sensor_task_handle != NULL) vTaskDelete(mq9_sensor_task_handle);
+
 			break;
 		case MQTT_EVENT_ERROR:
 			ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
