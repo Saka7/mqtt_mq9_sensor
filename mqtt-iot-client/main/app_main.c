@@ -21,21 +21,37 @@
 
 static const char *TAG = "MQTT";
 static uint16_t adc_data;
+
+static TaskHandle_t mqtt_task_handle = NULL;
 static TaskHandle_t mq9_sensor_task_handle = NULL;
+static xQueueHandle mq9_value_queue_handle = NULL;
+
+static void mqtt_task(void * args) {
+	esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t*) args;
+	uint16_t data = 0;
+
+	while (1) {
+		if (xQueueReceive(mq9_value_queue_handle, &data, 500)) {
+			ESP_LOGI(TAG, "received item from queue: %d", data);
+
+			char msg [sizeof(uint16_t) + 1];
+			utoa(data, msg, 10);
+
+			uint8_t msg_id = 0;
+			msg_id = esp_mqtt_client_publish(client, CONFIG_MQ9_MQTT_TOPIC, msg, 0, 1, 0);
+			ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+		}
+	}
+}
 
 static void mq9_sensor_task(void * args) {
-	esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t*) args;
-
 	while (1) {
 		adc_read(&adc_data);
 		ESP_LOGI(TAG, "adc read: %d\r\n", adc_data);
 
-		char msg [sizeof(uint16_t) + 1];
-		utoa(adc_data, msg, 10);
+		long sent = xQueueSend(mq9_value_queue_handle, &adc_data, 5000);
 
-		uint8_t msg_id = 0;
-		msg_id = esp_mqtt_client_publish(client, CONFIG_MQ9_MQTT_TOPIC, msg, 0, 1, 0);
-		ESP_LOGI(TAG, "sent publish successful, msg_id=%d", msg_id);
+		ESP_LOGI(TAG, "send value to the queue: %ld\r\n", sent);
 
 		vTaskDelay(CONFIG_MQ9_REFRESH_INTERVAL_MS / portTICK_RATE_MS);
 	}
@@ -46,11 +62,11 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event) {
 	switch (event->event_id) {
 		case MQTT_EVENT_CONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_CONNECTED");
-			xTaskCreate(mq9_sensor_task, "mq9_sensor_task", 1024, (void *) client, 5, &mq9_sensor_task_handle);
+			xTaskCreate(mqtt_task, "mqtt_task", 1024, (void *) client, 5, &mqtt_task_handle);
 			break;
 		case MQTT_EVENT_DISCONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-			if (mq9_sensor_task_handle != NULL) vTaskDelete(mq9_sensor_task_handle);
+			if (mqtt_task_handle != NULL) vTaskDelete(mqtt_task_handle);
 			break;
 		case MQTT_EVENT_ERROR:
 			ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
@@ -66,6 +82,9 @@ static void mqtt_app_start(void) {
 		.uri = CONFIG_BROKER_URL,
 		.event_handle = mqtt_event_handler,
 	};
+
+	mq9_value_queue_handle = xQueueCreate(1024, sizeof(uint16_t));
+	xTaskCreate(mq9_sensor_task, "mq9_sensor_task", 1024, NULL, 5, &mq9_sensor_task_handle);
 
 	esp_mqtt_client_handle_t client = esp_mqtt_client_init(&mqtt_cfg);
 	esp_mqtt_client_start(client);
