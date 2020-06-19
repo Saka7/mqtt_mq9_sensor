@@ -1,4 +1,8 @@
-build
-main/Kconfig.projbuild
-sdkconfig
-sdkconfig.old
+**/build
+**/Kconfig.projbuild
+**/sdkconfig
+**/sdkconfig.old
+**/node_modules
+**/*.env
+**/.idea
+**/*.log
