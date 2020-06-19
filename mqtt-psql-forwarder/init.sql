@@ -1,0 +1,4 @@
+CREATE TABLE mq9_sensor_value (
+ t TIMESTAMPTZ NOT NULL,
+ value VARCHAR(4) NOT NULL
+);

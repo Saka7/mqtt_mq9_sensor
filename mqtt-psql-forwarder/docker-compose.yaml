@@ -1,0 +1,69 @@
+version: '3'
+
+services:
+
+  # Timescaledb
+  mq9_timescaledb:
+    image: timescale/timescaledb:latest-pg12
+    container_name: mq9_timescaledb
+    environment:
+      POSTGRES_PASSWORD: ${PSQL_PASSWORD}
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+      - /tmp/psql:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    networks:
+      - mq9-net
+    restart: unless-stopped
+    env_file:
+      - .env
+
+  # Mosquitto
+  mq9_mosquitto:
+    image: 'eclipse-mosquitto:latest'
+    container_name: mq9_mosquitto
+    ports:
+      - '1883:1883'
+    networks:
+      - mq9-net
+    restart: unless-stopped
+
+  # Nodejs forwarder
+  mq9_forwarder:
+    build:
+        context: .
+        dockerfile: Dockerfile
+    image: mq9_forwarder
+    container_name: mq9_forwarder
+    restart: unless-stopped
+    links:
+        - mq9_timescaledb
+        - mq9_mosquitto
+    depends_on:
+        - mq9_timescaledb
+        - mq9_mosquitto
+    networks:
+      - mq9-net
+
+  # Grafana
+  mq9_grafana:
+    image: grafana/grafana:latest
+    container_name: mq9_grafana
+    restart: unless-stopped
+    ports:
+        - "3000:3000"
+    links:
+        - mq9_timescaledb
+        - mq9_mosquitto
+    depends_on:
+        - mq9_timescaledb
+        - mq9_mosquitto
+    volumes:
+      - /tmp/grafana:/var/lib/grafana
+    networks:
+      - mq9-net
+
+networks:
+  mq9-net:
+    driver: bridge
