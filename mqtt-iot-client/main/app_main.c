@@ -20,18 +20,18 @@
 #include "protocol_wifi_common.h"
 
 static const char *TAG = "MQTT";
-static uint16_t adc_data[100];
+static uint16_t adc_data;
 static TaskHandle_t mq9_sensor_task_handle = NULL;
 
 static void mq9_sensor_task(void * args) {
 	esp_mqtt_client_handle_t client = (esp_mqtt_client_handle_t*) args;
 
 	while (1) {
-		adc_read(&adc_data[0]);
-		ESP_LOGI(TAG, "adc read: %d\r\n", adc_data[0]);
+		adc_read(&adc_data);
+		ESP_LOGI(TAG, "adc read: %d\r\n", adc_data);
 
 		char msg [sizeof(uint16_t) + 1];
-		utoa(adc_data[0], msg, 10);
+		utoa(adc_data, msg, 10);
 
 		uint8_t msg_id = 0;
 		msg_id = esp_mqtt_client_publish(client, CONFIG_MQ9_MQTT_TOPIC, msg, 0, 1, 0);
@@ -50,9 +50,7 @@ static esp_err_t mqtt_event_handler(esp_mqtt_event_handle_t event) {
 			break;
 		case MQTT_EVENT_DISCONNECTED:
 			ESP_LOGI(TAG, "MQTT_EVENT_DISCONNECTED");
-
 			if (mq9_sensor_task_handle != NULL) vTaskDelete(mq9_sensor_task_handle);
-
 			break;
 		case MQTT_EVENT_ERROR:
 			ESP_LOGI(TAG, "MQTT_EVENT_ERROR");
