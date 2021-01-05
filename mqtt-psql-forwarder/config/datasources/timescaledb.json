@@ -1,0 +1,10 @@
+{
+  "name": "TimescaleDB",
+  "type": "postgresql",
+  "url": "http://localhost:5434",
+  "access": "direct",
+  "user": "$PSQL_USER",
+  "password": "$PSQL_PASSWORD",
+  "database": "$PSQL_DB_NAME",
+  "basicAuth": false
+}
